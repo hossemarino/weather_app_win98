@@ -171,22 +171,26 @@ Current Conditions:
 "@
         
         # Add forecast data
-        $forecastDays = [Math]::Min(3, $response.weather.Count)
-        for ($i = 0; $i -lt $forecastDays; $i++) {
-            $forecast = $response.weather[$i]
-            $date = $forecast.date
-            $maxTemp = $forecast.maxtempC
-            $minTemp = $forecast.mintempC
-            
-            # Use first available hourly forecast (index 0) instead of hard-coded index 4
-            $desc = if ($forecast.hourly -and $forecast.hourly.Count -gt 0 -and 
-                       $forecast.hourly[0].weatherDesc -and $forecast.hourly[0].weatherDesc.Count -gt 0) {
-                $forecast.hourly[0].weatherDesc[0].value
-            } else { "No description available" }
-            
-            $output += "`n  $date"
-            $output += "`n    High: $maxTemp°C  Low: $minTemp°C"
-            $output += "`n    $desc`n"
+        if ($response.weather -and $response.weather.Count -gt 0) {
+            $forecastDays = [Math]::Min(3, $response.weather.Count)
+            for ($i = 0; $i -lt $forecastDays; $i++) {
+                $forecast = $response.weather[$i]
+                $date = $forecast.date
+                $maxTemp = $forecast.maxtempC
+                $minTemp = $forecast.mintempC
+                
+                # Use first available hourly forecast (index 0) instead of hard-coded index 4
+                $desc = if ($forecast.hourly -and $forecast.hourly.Count -gt 0 -and 
+                           $forecast.hourly[0].weatherDesc -and $forecast.hourly[0].weatherDesc.Count -gt 0) {
+                    $forecast.hourly[0].weatherDesc[0].value
+                } else { "No description available" }
+                
+                $output += "`n  $date"
+                $output += "`n    High: $maxTemp°C  Low: $minTemp°C"
+                $output += "`n    $desc`n"
+            }
+        } else {
+            $output += "`n  No forecast data available`n"
         }
         
         $weatherTextBox.Text = $output
