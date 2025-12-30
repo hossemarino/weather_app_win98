@@ -115,9 +115,16 @@ function Get-WeatherData {
         
         $response = Invoke-RestMethod -Uri $url -Method Get -ErrorAction Stop
         
-        # Parse and format the weather data
-        $currentCondition = $response.current_condition
-        $weatherDesc = $response.current_condition.weatherDesc[0].value
+        # Validate response structure
+        if (-not $response.current_condition -or -not $response.nearest_area -or -not $response.weather) {
+            throw "Invalid response from weather service"
+        }
+        
+        # Parse and format the weather data with safe array access
+        $weatherDesc = if ($response.current_condition.weatherDesc -and $response.current_condition.weatherDesc.Count -gt 0) {
+            $response.current_condition.weatherDesc[0].value
+        } else { "Unknown" }
+        
         $tempC = $response.current_condition.temp_C
         $tempF = $response.current_condition.temp_F
         $feelsLikeC = $response.current_condition.FeelsLikeC
@@ -129,8 +136,13 @@ function Get-WeatherData {
         $visibility = $response.current_condition.visibility
         $uvIndex = $response.current_condition.uvIndex
         
-        $locationName = $response.nearest_area.areaName[0].value
-        $country = $response.nearest_area.country[0].value
+        $locationName = if ($response.nearest_area.areaName -and $response.nearest_area.areaName.Count -gt 0) {
+            $response.nearest_area.areaName[0].value
+        } else { $city }
+        
+        $country = if ($response.nearest_area.country -and $response.nearest_area.country.Count -gt 0) {
+            $response.nearest_area.country[0].value
+        } else { "" }
         
         # Format the output in a Windows 98 style
         $output = @"
@@ -159,12 +171,18 @@ Current Conditions:
 "@
         
         # Add forecast data
-        for ($i = 0; $i -lt 3; $i++) {
+        $forecastDays = [Math]::Min(3, $response.weather.Count)
+        for ($i = 0; $i -lt $forecastDays; $i++) {
             $forecast = $response.weather[$i]
             $date = $forecast.date
             $maxTemp = $forecast.maxtempC
             $minTemp = $forecast.mintempC
-            $desc = $forecast.hourly[4].weatherDesc[0].value
+            
+            # Use first available hourly forecast (index 0) instead of hard-coded index 4
+            $desc = if ($forecast.hourly -and $forecast.hourly.Count -gt 0 -and 
+                       $forecast.hourly[0].weatherDesc -and $forecast.hourly[0].weatherDesc.Count -gt 0) {
+                $forecast.hourly[0].weatherDesc[0].value
+            } else { "No description available" }
             
             $output += "`n  $date"
             $output += "`n    High: $maxTemp°C  Low: $minTemp°C"
