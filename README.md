@@ -11,6 +11,7 @@ A nostalgic PowerShell-based weather application with a classic Windows 98 inter
 - **Ad-Free**: No advertisements, no tracking, no bloat
 - **Classic UI**: Authentic Windows 98 interface styling
 - **Fast & Lightweight**: Simple PowerShell script with minimal dependencies
+- **City Dropdown**: Quick selection from 20 popular cities or type any custom city name
 - **Current Weather**: Real-time weather conditions for any city
 - **3-Day Forecast**: Quick glance at upcoming weather
 - **Powered by wttr.in**: Reliable weather data API
@@ -48,21 +49,19 @@ Or right-click on `WeatherApp.ps1` and select "Run with PowerShell"
 
 ### Using the App
 
-1. Enter a city name in the text box (e.g., "London", "New York", "Tokyo")
+1. Select a city from the dropdown or type a custom city name (e.g., "London", "New York", "Tokyo")
 2. Click "Get Weather" or press Enter
 3. View the current weather conditions and 3-day forecast
 
-### Examples of City Names
+### Popular Cities in Dropdown
 
-- `London`
-- `New York`
-- `Tokyo`
-- `Paris`
-- `Sydney`
-- `Berlin`
-- `Mumbai`
+The dropdown includes 20 popular cities for quick access:
+- London, New York, Tokyo, Paris, Sydney
+- Berlin, Mumbai, Dubai, Singapore, Rome
+- Barcelona, Amsterdam, Toronto, Los Angeles, Chicago
+- San Francisco, Miami, Seattle, Hong Kong, Shanghai
 
-You can also use more specific locations like:
+You can also type any custom city name or use more specific locations like:
 - `London,UK`
 - `Paris,France`
 - `New York,NY`

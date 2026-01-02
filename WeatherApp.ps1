@@ -45,12 +45,42 @@ $cityLabel.Text = "City Name:"
 $cityLabel.Font = New-Object System.Drawing.Font("MS Sans Serif", 8)
 $cityGroupBox.Controls.Add($cityLabel)
 
-# City TextBox
-$cityTextBox = New-Object System.Windows.Forms.TextBox
-$cityTextBox.Location = New-Object System.Drawing.Point(100, 23)
-$cityTextBox.Size = New-Object System.Drawing.Size(250, 20)
-$cityTextBox.Font = New-Object System.Drawing.Font("MS Sans Serif", 8)
-$cityGroupBox.Controls.Add($cityTextBox)
+# City ComboBox (dropdown with popular cities)
+$cityComboBox = New-Object System.Windows.Forms.ComboBox
+$cityComboBox.Location = New-Object System.Drawing.Point(100, 23)
+$cityComboBox.Size = New-Object System.Drawing.Size(250, 20)
+$cityComboBox.Font = New-Object System.Drawing.Font("MS Sans Serif", 8)
+$cityComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDown
+
+# Add popular cities to the dropdown
+$popularCities = @(
+    "London",
+    "New York",
+    "Tokyo",
+    "Paris",
+    "Sydney",
+    "Berlin",
+    "Mumbai",
+    "Dubai",
+    "Singapore",
+    "Rome",
+    "Barcelona",
+    "Amsterdam",
+    "Toronto",
+    "Los Angeles",
+    "Chicago",
+    "San Francisco",
+    "Miami",
+    "Seattle",
+    "Hong Kong",
+    "Shanghai"
+)
+
+foreach ($city in $popularCities) {
+    $cityComboBox.Items.Add($city) | Out-Null
+}
+
+$cityGroupBox.Controls.Add($cityComboBox)
 
 # Get Weather Button
 $getWeatherButton = New-Object System.Windows.Forms.Button
@@ -212,14 +242,14 @@ Current Conditions:
 
 # Button click event
 $getWeatherButton.Add_Click({
-    Get-WeatherData -city $cityTextBox.Text
+    Get-WeatherData -city $cityComboBox.Text
 })
 
-# Enter key press event for city textbox
-$cityTextBox.Add_KeyDown({
+# Enter key press event for city combobox
+$cityComboBox.Add_KeyDown({
     param($sender, $e)
     if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter) {
-        Get-WeatherData -city $cityTextBox.Text
+        Get-WeatherData -city $cityComboBox.Text
         $e.SuppressKeyPress = $true
     }
 })
