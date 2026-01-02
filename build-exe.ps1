@@ -1,6 +1,6 @@
 param(
     [string]$InputFile = (Join-Path $PSScriptRoot 'weather3.ps1'),
-    [string]$OutDir = (Join-Path $PSScriptRoot 'dist'),
+    [string]$OutDir = $PSScriptRoot,
     [string]$ExeName = 'Windows98Weather.exe',
     [switch]$Console
 )
@@ -8,7 +8,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Initialize-Tls12 {
+function Set-Tls12 {
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     }
@@ -17,8 +17,8 @@ function Initialize-Tls12 {
     }
 }
 
-function Install-Ps2ExeIfNeeded {
-    Initialize-Tls12
+function Install-Ps2ExeIfMissing {
+    Set-Tls12
 
     # Make installs non-interactive on fresh machines
     try { Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null } catch {}
@@ -35,10 +35,14 @@ if (-not (Test-Path -LiteralPath $InputFile)) {
     throw "Input file not found: $InputFile"
 }
 
+if ([string]::IsNullOrWhiteSpace($OutDir)) {
+    $OutDir = $PSScriptRoot
+}
+
 New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
 $exePath = Join-Path $OutDir $ExeName
 
-Install-Ps2ExeIfNeeded
+Install-Ps2ExeIfMissing
 
 $invokeParams = @{
     InputFile  = $InputFile

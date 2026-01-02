@@ -23,7 +23,7 @@ Optional (show a console window):
 
 Output:
 
-- `dist\Windows98Weather.exe`
+- `Windows98Weather.exe`
 
 Notes:
 

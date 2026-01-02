@@ -1,0 +1,8 @@
+{
+  // Workspace-only: stop PowerShell script analysis from flagging scripts in red.
+  // This does not affect your global VS Code settings.
+  "powershell.scriptAnalysis.enable": false,
+
+  // If you later set enable=true, the extension will use these analyzer settings:
+  "powershell.scriptAnalysis.settingsPath": "${workspaceFolder}/PSScriptAnalyzerSettings.psd1"
+}
