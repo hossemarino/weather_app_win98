@@ -1,3 +1,9 @@
 Cities.ini
+ 
+# Build outputs
+*.exe
+dist/
+out/
+release/
 
 

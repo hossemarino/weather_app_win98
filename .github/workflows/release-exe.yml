@@ -1,0 +1,79 @@
+name: Build EXE on tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build EXE (ps2exe)
+        shell: powershell
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+
+          # Make PSGallery installs non-interactive on clean runners
+          try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch {}
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
+          try { Set-PSRepository -Name PSGallery -InstallationPolicy Trusted } catch {}
+
+          # Install ps2exe from PowerShell Gallery
+          Install-Module -Name ps2exe -Scope CurrentUser -Force -AllowClobber
+
+          $outDir = Join-Path $PWD 'dist'
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+
+          $exePath = Join-Path $outDir 'Windows98Weather.exe'
+
+          # Compile weather3.ps1 to a Windows GUI exe (no console)
+          Invoke-ps2exe -InputFile (Join-Path $PWD 'weather3.ps1') -OutputFile $exePath -NoConsole
+
+          if (-not (Test-Path -LiteralPath $exePath)) {
+            throw "EXE was not created at $exePath"
+          }
+
+      - name: Package release zip
+        shell: powershell
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+
+          $dist = Join-Path $PWD 'dist'
+          $zip  = Join-Path $dist 'Windows98Weather.zip'
+
+          $files = @(
+            Join-Path $dist 'Windows98Weather.exe',
+            Join-Path $PWD 'README.md',
+            Join-Path $PWD 'Cities.ini',
+            Join-Path $PWD 'Weather98Help.chm',
+            Join-Path $PWD 'ding.wav',
+            Join-Path $PWD 'chord.wav',
+            Join-Path $PWD 'Windows_98.wav'
+          )
+
+          $existing = $files | Where-Object { Test-Path -LiteralPath $_ }
+          if ($existing.Count -lt 2) {
+            throw 'Expected at least the EXE + README to package.'
+          }
+
+          if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+          Compress-Archive -Path $existing -DestinationPath $zip -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Windows98Weather.exe
+            dist/Windows98Weather.zip
+          generate_release_notes: true

@@ -260,11 +260,32 @@ function Update-CityList {
         if ($sorted.Count -gt 0) {
             [void]$cmbCity.Items.AddRange($sorted)
         }
-        $cmbCity.Text = $cityTrim
+        $idx = -1
+        try { $idx = $cmbCity.FindStringExact($cityTrim) } catch { $idx = -1 }
+        if ($idx -ge 0) {
+            $cmbCity.SelectedIndex = $idx
+        }
+        else {
+            # Keep allowing free-typed cities even if not in the list
+            $cmbCity.Text = $cityTrim
+        }
     }
     finally {
         try { $cmbCity.EndUpdate() } catch {}
     }
+}
+
+function Get-SelectedCity {
+    # ComboBox.Text can be affected by AutoComplete; prefer SelectedItem when a list entry is chosen.
+    try {
+        if ($cmbCity.SelectedIndex -ge 0 -and $null -ne $cmbCity.SelectedItem) {
+            return ([string]$cmbCity.SelectedItem).Trim()
+        }
+    }
+    catch {
+        # fall through
+    }
+    return ([string]$cmbCity.Text).Trim()
 }
 
 function Get-StartupSoundCandidatePaths {
@@ -485,7 +506,7 @@ if ($iniCities.Count -gt 0) {
     [void]$cmbCity.Items.AddRange($iniCities)
     $cmbCity.SelectedIndex = 0
 }
-$cmbCity.AutoCompleteMode = 'SuggestAppend'
+$cmbCity.AutoCompleteMode = 'Suggest'
 $cmbCity.AutoCompleteSource = 'ListItems'
 $topPanel.Controls.Add($cmbCity)
 
@@ -1026,7 +1047,7 @@ function Update-WeatherUiForDay {
 }
 
 function Invoke-WeatherRefresh {
-    $city = [string]$cmbCity.Text
+    $city = Get-SelectedCity
     if ([string]::IsNullOrWhiteSpace($city)) { return }
     $city = $city.Trim()
 
