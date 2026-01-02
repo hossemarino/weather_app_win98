@@ -148,19 +148,64 @@ function Get-CitiesFromIni {
         [string]$Path = $script:CitiesIniPath
     )
 
+    $data = Get-CitiesIniData -Path $Path
+    if ($null -eq $data) { return @() }
+    return @($data.Cities)
+}
+
+function Get-CitiesIniData {
+    param(
+        [string]$Path = $script:CitiesIniPath
+    )
+
     $results = New-Object System.Collections.Generic.List[string]
     if (-not (Test-Path -LiteralPath $Path)) {
-        return @()
+        return [pscustomobject]@{
+            Cities   = @()
+            LastCity = $null
+        }
     }
 
     try {
         $lines = Get-Content -LiteralPath $Path -ErrorAction Stop
     }
     catch {
-        return @()
+        return [pscustomobject]@{
+            Cities   = @()
+            LastCity = $null
+        }
+    }
+
+    $hasAnySection = $false
+    foreach ($lineRaw in $lines) {
+        $trim = ([string]$lineRaw).Trim()
+        if ($trim -match '^\[(.+)\]$') {
+            $hasAnySection = $true
+            break
+        }
+    }
+
+    if (-not $hasAnySection) {
+        foreach ($lineRaw in $lines) {
+            $line = [string]$lineRaw
+            if ($null -eq $line) { continue }
+            $trim = $line.Trim()
+            if ($trim.Length -eq 0) { continue }
+            if ($trim.StartsWith(';') -or $trim.StartsWith('#')) { continue }
+            $results.Add($trim)
+        }
+
+        $cities = @(($results.ToArray()) | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ })
+        $cities = @($cities | Sort-Object)
+        return [pscustomobject]@{
+            Cities   = $cities
+            LastCity = $null
+        }
     }
 
     $inCities = $false
+    $inSettings = $false
+    $lastCity = $null
     foreach ($lineRaw in $lines) {
         $line = [string]$lineRaw
         if ($null -eq $line) { continue }
@@ -171,6 +216,7 @@ function Get-CitiesFromIni {
         if ($trim -match '^\[(.+)\]$') {
             $section = $Matches[1].Trim()
             $inCities = ($section -ieq 'Cities')
+            $inSettings = ($section -ieq 'Settings')
             continue
         }
 
@@ -185,9 +231,14 @@ function Get-CitiesFromIni {
                 $results.Add($trim)
             }
         }
-        else {
-            # Back-compat: if no [Cities] section exists, treat lines as city names
-            $results.Add($trim)
+        elseif ($inSettings) {
+            if ($trim -match '^LastCity\s*=\s*(.*)$') {
+                $v = $Matches[1]
+                if ($null -ne $v) {
+                    $v2 = ([string]$v).Trim()
+                    if ($v2.Length -gt 0) { $lastCity = $v2 }
+                }
+            }
         }
     }
 
@@ -200,7 +251,11 @@ function Get-CitiesFromIni {
         if ($seen.Add($city)) { $unique.Add($city) }
     }
 
-    $unique.ToArray() | Sort-Object
+    $cities = @($unique.ToArray() | Sort-Object)
+    [pscustomobject]@{
+        Cities   = $cities
+        LastCity = $lastCity
+    }
 }
 
 function Set-CitiesIni {
@@ -208,11 +263,27 @@ function Set-CitiesIni {
         [Parameter(Mandatory)]
         [string[]]$Cities,
 
-        [string]$Path = $script:CitiesIniPath
+        [string]$Path = $script:CitiesIniPath,
+
+        [AllowNull()]
+        [string]$LastCity
     )
 
     $citiesSorted = @($Cities | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ } | Sort-Object)
     $content = New-Object System.Collections.Generic.List[string]
+
+    $lastCityTrim = $null
+    if ($null -ne $LastCity) {
+        $t = ([string]$LastCity).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($t)) { $lastCityTrim = $t }
+    }
+
+    if ($lastCityTrim) {
+        $content.Add('[Settings]')
+        $content.Add('LastCity=' + $lastCityTrim)
+        $content.Add('')
+    }
+
     $content.Add('[Cities]')
     foreach ($c in $citiesSorted) {
         $content.Add('City=' + $c)
@@ -229,6 +300,39 @@ function Set-CitiesIni {
     }
 
     Set-Content -LiteralPath $Path -Value $content -Encoding UTF8
+}
+
+function Get-LastSelectedCityFromIni {
+    param(
+        [string]$Path = $script:CitiesIniPath
+    )
+
+    try {
+        $d = Get-CitiesIniData -Path $Path
+        if ($null -eq $d) { return $null }
+        return $d.LastCity
+    }
+    catch {
+        return $null
+    }
+}
+
+function Save-LastSelectedCityToIni {
+    param(
+        [Parameter(Mandatory)]
+        [string]$City,
+
+        [string]$Path = $script:CitiesIniPath
+    )
+
+    $cityTrim = ([string]$City).Trim()
+    if ([string]::IsNullOrWhiteSpace($cityTrim)) { return }
+
+    $data = Get-CitiesIniData -Path $Path
+    $cities = @()
+    if ($data -and $data.Cities) { $cities = @($data.Cities) }
+
+    Set-CitiesIni -Cities $cities -Path $Path -LastCity $cityTrim
 }
 
 function Update-CityList {
@@ -252,7 +356,7 @@ function Update-CityList {
     }
 
     $sorted = @($unique.ToArray() | Sort-Object)
-    Set-CitiesIni -Cities $sorted
+    Set-CitiesIni -Cities $sorted -LastCity $cityTrim
 
     try {
         $cmbCity.BeginUpdate()
@@ -504,6 +608,21 @@ $cmbCity.Width = 240
 $iniCities = @(Get-CitiesFromIni)
 if ($iniCities.Count -gt 0) {
     [void]$cmbCity.Items.AddRange($iniCities)
+}
+
+$lastCityStartup = Get-LastSelectedCityFromIni
+if (-not [string]::IsNullOrWhiteSpace($lastCityStartup)) {
+    $idx = -1
+    try { $idx = $cmbCity.FindStringExact($lastCityStartup) } catch { $idx = -1 }
+    if ($idx -ge 0) {
+        $cmbCity.SelectedIndex = $idx
+    }
+    else {
+        $cmbCity.Text = ([string]$lastCityStartup).Trim()
+        if ($iniCities.Count -gt 0) { $cmbCity.SelectedIndex = 0 }
+    }
+}
+elseif ($iniCities.Count -gt 0) {
     $cmbCity.SelectedIndex = 0
 }
 $cmbCity.AutoCompleteMode = 'Suggest'
@@ -1050,6 +1169,8 @@ function Invoke-WeatherRefresh {
     $city = Get-SelectedCity
     if ([string]::IsNullOrWhiteSpace($city)) { return }
     $city = $city.Trim()
+
+    try { Save-LastSelectedCityToIni -City $city } catch { }
 
     try {
         $btnRefresh.Enabled = $false
