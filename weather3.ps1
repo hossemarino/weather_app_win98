@@ -1,5 +1,5 @@
 Set-StrictMode -Version Latest
-$ErrorActionPreference = ''Stop''
+$ErrorActionPreference = 'Stop'
 
 & {
 
@@ -40,24 +40,24 @@ $ErrorActionPreference = ''Stop''
         try { $script:AppBase = Split-Path -Parent $MyInvocation.MyCommand.Path } catch { $script:AppBase = (Get-Location).Path }
     }
 
-    . (Join-Path $script:AppBase ''src\Core.ps1'')
-    . (Join-Path $script:AppBase ''src\Settings.ps1'')
-    . (Join-Path $script:AppBase ''src\OpenMeteo.ps1'')
-    . (Join-Path $script:AppBase ''src\Sounds.ps1'')
-    . (Join-Path $script:AppBase ''src\UiLayout.ps1'')
-    . (Join-Path $script:AppBase ''src\UiUpdate.ps1'')
-    . (Join-Path $script:AppBase ''src\UiActions.ps1'')
+    . (Join-Path $script:AppBase 'src\Core.ps1')
+    . (Join-Path $script:AppBase 'src\Settings.ps1')
+    . (Join-Path $script:AppBase 'src\OpenMeteo.ps1')
+    . (Join-Path $script:AppBase 'src\Sounds.ps1')
+    . (Join-Path $script:AppBase 'src\UiLayout.ps1')
+    . (Join-Path $script:AppBase 'src\UiUpdate.ps1')
+    . (Join-Path $script:AppBase 'src\UiActions.ps1')
 
     # --- Globals / paths ---
-    $script:SoundSuccessPath = [System.IO.Path]::Combine($script:AppBase, ''ding.wav'')
-    $script:SoundErrorPath = [System.IO.Path]::Combine($script:AppBase, ''chord.wav'')
+    $script:SoundSuccessPath = [System.IO.Path]::Combine($script:AppBase, 'ding.wav')
+    $script:SoundErrorPath = [System.IO.Path]::Combine($script:AppBase, 'chord.wav')
     $script:StartupSoundPlayed = $false
 
-    $script:SettingsIniPath = Join-Path $script:AppBase ''Settings.ini''
-    $script:LegacyCitiesIniPath = Join-Path $script:AppBase ''Cities.ini''
-    $script:UnitSystem = ''Metric'' # Metric | Imperial
-    $script:LastCity = ''''
-    $script:Language = ''en''
+    $script:SettingsIniPath = Join-Path $script:AppBase 'Settings.ini'
+    $script:LegacyCitiesIniPath = Join-Path $script:AppBase 'Cities.ini'
+    $script:UnitSystem = 'Metric' # Metric | Imperial
+    $script:LastCity = ''
+    $script:Language = 'en'
     $script:StartupCities = @()
     Initialize-AppSettings
 
