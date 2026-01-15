@@ -1,5 +1,15 @@
 # weather_app_win98
-Windows 98 Styled Weather program based on curl wttr.in/&lt;city_name>
+Windows 98 Styled Weather program using Open-Meteo (geocoding + forecast).
+
+Includes a Metric/Imperial units selector (°C/°F, km/h/mph).
+
+Personalizations are stored in Settings.ini:
+- [Settings] UnitSystem, LastCity, Language
+- [Cities] saved city list
+
+Note: Settings.ini is user-specific and is ignored by git. Use Settings.example.ini as a template.
+
+If you have an old Cities.ini, the app will auto-migrate it on first run.
 
 ## Build an EXE (local)
 
@@ -9,23 +19,18 @@ This repo does not commit the generated `.exe`. Build it locally when you need i
 
 - Windows
 - PowerShell (Windows PowerShell 5.1 or PowerShell 7+)
-- Internet access (first run installs the `ps2exe` module from PSGallery)
+- Internet access (first run may install PS2EXE from PSGallery)
 
 ### Build
 
 From the repo folder:
 
-- `powershell -NoProfile -ExecutionPolicy Bypass -File .\build-exe.ps1`
-
-Optional (show a console window):
-
-- `powershell -NoProfile -ExecutionPolicy Bypass -File .\build-exe.ps1 -Console`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Clean`
 
 Output:
 
-- `Windows98Weather.exe`
+- `dist\Windows98Weather.exe`
 
 Notes:
 
-- If your machine prompts about installing from PSGallery, re-run in an elevated PowerShell or set PSGallery to trusted.
-- `.exe` files are ignored by git (see `.gitignore`).
+- `.exe` files and `dist\` are ignored by git (see `.gitignore`).
