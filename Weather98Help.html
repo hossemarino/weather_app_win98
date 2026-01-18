@@ -118,6 +118,43 @@
       margin: 10px;
     }
 
+    .sidePanel { display: none; }
+    .sidePanel.active { display: block; }
+
+    .searchRow {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .searchInput {
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid #7f7f7f;
+      font-family: var(--sans);
+      font-size: 13px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #333;
+      margin: 6px 0 10px;
+    }
+
+    .splitter {
+      width: 6px;
+      cursor: col-resize;
+      background: var(--win-face);
+      border-left: 1px solid #b0b0b0;
+      border-right: 1px solid #b0b0b0;
+    }
+
+    .splitter:focus {
+      outline: 1px dotted #000;
+      outline-offset: -2px;
+    }
+
     .tocList {
       list-style: none;
       padding: 0;
@@ -248,6 +285,7 @@
         flex: 0 0 auto;
         max-height: none;
       }
+      .splitter { display: none; }
       .main { padding: 10px; }
     }
   </style>
@@ -262,26 +300,43 @@
       <aside class="sidebar" aria-label="Contents">
         <div class="sidebarHeader">Help Topics</div>
         <div class="sidebarTabs">
-          <span class="tab tabActive">Contents</span>
-          <span class="tab" title="This is a single-file manual; Index/Search are not implemented.">Index</span>
-          <span class="tab" title="This is a single-file manual; Index/Search are not implemented.">Search</span>
+          <button class="tab tabActive" type="button" data-tab="contents">Contents</button>
+          <button class="tab" type="button" data-tab="index">Index</button>
+          <button class="tab" type="button" data-tab="search">Search</button>
         </div>
         <div class="sidebarBody">
-          <ul class="tocList">
-            <li><a href="#top">Reason d'être</a></li>
-            <li><a href="#quickstart">Quick start</a></li>
-            <li><a href="#usage">Using the app</a></li>
-            <li><a href="#settings">Settings.ini reference</a></li>
-            <li><a href="#data">Data sources &amp; privacy</a></li>
-            <li><a href="#units">Units &amp; fields</a></li>
-            <li><a href="#sounds">Sounds</a></li>
-            <li><a href="#troubleshooting">Troubleshooting</a></li>
-            <li><a href="#dev">Developer notes</a></li>
-            <li><a href="#build">Building the EXE</a></li>
-            <li><a href="#appendix">Appendix: thermodynamics (math)</a></li>
-          </ul>
+          <div class="sidePanel active" id="panel-contents">
+            <ul class="tocList" id="tocList">
+              <li><a href="#top">Reason d'être</a></li>
+              <li><a href="#quickstart">Quick start</a></li>
+              <li><a href="#usage">Using the app</a></li>
+              <li><a href="#settings">Settings.ini reference</a></li>
+              <li><a href="#data">Data sources &amp; privacy</a></li>
+              <li><a href="#units">Units &amp; fields</a></li>
+              <li><a href="#sounds">Sounds</a></li>
+              <li><a href="#troubleshooting">Troubleshooting</a></li>
+              <li><a href="#dev">Developer notes</a></li>
+              <li><a href="#build">Building the EXE</a></li>
+              <li><a href="#appendix">Appendix: thermodynamics (math)</a></li>
+            </ul>
+          </div>
+
+          <div class="sidePanel" id="panel-index">
+            <div class="hint">Alphabetical list of topics. Click to jump.</div>
+            <ul class="tocList" id="indexList"></ul>
+          </div>
+
+          <div class="sidePanel" id="panel-search">
+            <div class="searchRow">
+              <input class="searchInput" id="searchInput" type="text" placeholder="Search topics (e.g., dew point, units, Settings.ini)" />
+            </div>
+            <div class="hint">Search matches section titles and index keywords.</div>
+            <ul class="tocList" id="searchResults"></ul>
+          </div>
         </div>
       </aside>
+
+      <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0" title="Drag to resize the Contents pane"></div>
 
       <main class="main">
       <div class="panel">
@@ -644,9 +699,16 @@ T in °C, v in km/h</pre>
 
   <script>
     (function () {
+      function $(sel) { return document.querySelector(sel); }
+      function $all(sel) { return document.querySelectorAll(sel); }
+
+      function normalize(s) {
+        return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      }
+
       function setActiveFromHash() {
         var hash = window.location.hash || '#top';
-        var links = document.querySelectorAll('.tocList a');
+        var links = $all('.sidebarBody a[href^="#"]');
         for (var i = 0; i < links.length; i++) {
           var a = links[i];
           if (a.getAttribute('href') === hash) a.classList.add('active');
@@ -654,24 +716,204 @@ T in °C, v in km/h</pre>
         }
       }
 
-      // Keep TOC highlight in sync
-      window.addEventListener('hashchange', setActiveFromHash);
-      setActiveFromHash();
+      function scrollToHashTarget() {
+        var hash = window.location.hash || '#top';
+        var id = hash.slice(1);
+        var el = document.getElementById(id);
+        if (!el) return;
+        try { el.scrollIntoView({ block: 'start' }); }
+        catch (e) { try { el.scrollIntoView(true); } catch (e2) {} }
+      }
 
-      // Improve anchor navigation by ensuring the target is visible after clicking in the TOC
-      var toc = document.querySelector('.tocList');
-      if (toc) {
-        toc.addEventListener('click', function (ev) {
+      // --- Tabs (Contents / Index / Search) ---
+      var panels = {
+        contents: $('#panel-contents'),
+        index: $('#panel-index'),
+        search: $('#panel-search')
+      };
+
+      function activateTab(name) {
+        var tabs = $all('.sidebarTabs .tab');
+        for (var i = 0; i < tabs.length; i++) {
+          var b = tabs[i];
+          var isActive = (b.getAttribute('data-tab') === name);
+          if (isActive) b.classList.add('tabActive');
+          else b.classList.remove('tabActive');
+        }
+
+        for (var k in panels) {
+          if (!panels.hasOwnProperty(k) || !panels[k]) continue;
+          if (k === name) panels[k].classList.add('active');
+          else panels[k].classList.remove('active');
+        }
+      }
+
+      var tabButtons = $all('.sidebarTabs .tab');
+      for (var ti = 0; ti < tabButtons.length; ti++) {
+        (function (btn) {
+          btn.addEventListener('click', function () {
+            activateTab(btn.getAttribute('data-tab'));
+            var si = $('#searchInput');
+            if (btn.getAttribute('data-tab') === 'search' && si) { try { si.focus(); } catch (e) {} }
+          });
+        })(tabButtons[ti]);
+      }
+
+      // --- Index + Search data ---
+      var indexEntries = [
+        { term: "Adiabatic lapse rate", href: "#appendix", keywords: "lapse rate dry adiabatic gamma_d" },
+        { term: "Building the EXE", href: "#build", keywords: "build dist ps2exe" },
+        { term: "City selection", href: "#usage", keywords: "geocoding lastcity" },
+        { term: "Data sources", href: "#data", keywords: "open-meteo api privacy" },
+        { term: "Dew point", href: "#appendix", keywords: "dewpoint Td magnus" },
+        { term: "Heat index", href: "#appendix", keywords: "heat index humid" },
+        { term: "Hydrostatic balance", href: "#appendix", keywords: "dp/dz pressure altitude" },
+        { term: "Ideal gas law", href: "#appendix", keywords: "p=rhoRT" },
+        { term: "Potential temperature", href: "#appendix", keywords: "theta" },
+        { term: "Quick start", href: "#quickstart", keywords: "start run" },
+        { term: "Relative humidity", href: "#appendix", keywords: "RH saturation" },
+        { term: "Saturation vapor pressure", href: "#appendix", keywords: "magnus clausius clapeyron" },
+        { term: "Settings.ini", href: "#settings", keywords: "unitsystem language cities" },
+        { term: "Sounds", href: "#sounds", keywords: "ding chord" },
+        { term: "Troubleshooting", href: "#troubleshooting", keywords: "errors refresh" },
+        { term: "Units", href: "#units", keywords: "metric imperial celsius fahrenheit" },
+        { term: "Wind chill", href: "#appendix", keywords: "wind chill cold" }
+      ];
+
+      function renderList(listEl, items) {
+        if (!listEl) return;
+        var html = '';
+        for (var i = 0; i < items.length; i++) {
+          html += '<li><a href="' + items[i].href + '">' + items[i].term + '</a></li>';
+        }
+        listEl.innerHTML = html || '<li><span class="hint">No results.</span></li>';
+      }
+
+      // Build Index (alphabetical)
+      indexEntries.sort(function (a, b) {
+        var A = a.term.toLowerCase();
+        var B = b.term.toLowerCase();
+        return A < B ? -1 : (A > B ? 1 : 0);
+      });
+      renderList($('#indexList'), indexEntries);
+
+      // Search behavior
+      function runSearch() {
+        var q = normalize($('#searchInput') ? $('#searchInput').value : '');
+        var results = [];
+
+        // Match headings in main content
+        var headings = $all('main .panel h1[id], main .panel h2[id]');
+        for (var i = 0; i < headings.length; i++) {
+          var h = headings[i];
+          var title = h.textContent || h.innerText || '';
+          var hay = normalize(title);
+          if (!q || hay.indexOf(q) !== -1) {
+            results.push({ term: title.replace(/\s+/g, ' ').trim(), href: '#' + h.id });
+          }
+        }
+
+        // Match curated index keywords
+        for (var j = 0; j < indexEntries.length; j++) {
+          var it = indexEntries[j];
+          var hay2 = normalize(it.term + ' ' + (it.keywords || ''));
+          if (!q || hay2.indexOf(q) !== -1) {
+            // Avoid duplicates by href
+            var dup = false;
+            for (var k = 0; k < results.length; k++) {
+              if (results[k].href === it.href) { dup = true; break; }
+            }
+            if (!dup) results.push({ term: it.term, href: it.href });
+          }
+        }
+
+        // Keep it tidy
+        if (q) {
+          results = results.slice(0, 40);
+        } else {
+          results = [];
+        }
+
+        renderList($('#searchResults'), results);
+      }
+
+      var si = $('#searchInput');
+      if (si) {
+        si.addEventListener('input', function () { runSearch(); });
+      }
+
+      // Improve anchor navigation by ensuring the target is visible after clicking in the sidebar
+      var sidebarBody = $('.sidebarBody');
+      if (sidebarBody) {
+        sidebarBody.addEventListener('click', function (ev) {
           var t = ev.target;
           if (!t || t.tagName !== 'A') return;
           var href = t.getAttribute('href');
           if (!href || href.charAt(0) !== '#') return;
-          var el = document.getElementById(href.slice(1));
-          if (!el) return;
-          // Let the hash update, then scroll to align nicely.
           setTimeout(function () {
-            try { el.scrollIntoView({ block: 'start' }); } catch (e) { el.scrollIntoView(true); }
+            setActiveFromHash();
+            scrollToHashTarget();
           }, 0);
+        });
+      }
+
+      // Keep highlights in sync
+      window.addEventListener('hashchange', function () {
+        setActiveFromHash();
+      });
+      setActiveFromHash();
+
+      // --- Splitter (resize sidebar) ---
+      var sidebar = $('.sidebar');
+      var splitter = $('#splitter');
+      var dragging = false;
+      var startX = 0;
+      var startW = 0;
+
+      function clamp(n, min, max) {
+        return Math.max(min, Math.min(max, n));
+      }
+
+      function applySidebarWidth(px) {
+        if (!sidebar) return;
+        var w = clamp(px, 200, 520);
+        sidebar.style.width = w + 'px';
+        sidebar.style.flex = '0 0 ' + w + 'px';
+        try { localStorage.setItem('helpSidebarWidth', String(w)); } catch (e) {}
+      }
+
+      // Restore saved width
+      try {
+        var saved = localStorage.getItem('helpSidebarWidth');
+        if (saved) applySidebarWidth(parseInt(saved, 10));
+      } catch (e) {}
+
+      if (splitter && sidebar) {
+        splitter.addEventListener('mousedown', function (ev) {
+          dragging = true;
+          startX = ev.clientX;
+          startW = sidebar.getBoundingClientRect().width;
+          try { document.body.style.userSelect = 'none'; } catch (e) {}
+          ev.preventDefault();
+        });
+
+        window.addEventListener('mousemove', function (ev) {
+          if (!dragging) return;
+          var dx = ev.clientX - startX;
+          applySidebarWidth(startW + dx);
+        });
+
+        window.addEventListener('mouseup', function () {
+          if (!dragging) return;
+          dragging = false;
+          try { document.body.style.userSelect = ''; } catch (e) {}
+        });
+
+        splitter.addEventListener('keydown', function (ev) {
+          var key = ev.key || ev.keyCode;
+          var cur = sidebar.getBoundingClientRect().width;
+          if (key === 'ArrowLeft' || key === 37) { applySidebarWidth(cur - 10); ev.preventDefault(); }
+          if (key === 'ArrowRight' || key === 39) { applySidebarWidth(cur + 10); ev.preventDefault(); }
         });
       }
     })();
