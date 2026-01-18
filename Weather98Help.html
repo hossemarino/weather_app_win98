@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Windows 98 Weather — Manual</title>
+  <style>
+    :root {
+      --win-bg: #c0c0c0;
+      --win-face: #e0e0e0;
+      --win-white: #ffffff;
+      --win-shadow: #808080;
+      --win-dark: #000000;
+      --win-highlight: #ffffff;
+      --win-blue: #000080;
+      --text: #111;
+      --link: #0000ee;
+      --link-visited: #551a8b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: "MS Sans Serif", Tahoma, Verdana, Arial, sans-serif;
+    }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--win-bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .window {
+      max-width: 980px;
+      margin: 24px auto;
+      background: var(--win-face);
+      border-top: 2px solid var(--win-highlight);
+      border-left: 2px solid var(--win-highlight);
+      border-right: 2px solid var(--win-shadow);
+      border-bottom: 2px solid var(--win-shadow);
+      box-shadow: 0 0 0 1px #b0b0b0;
+    }
+
+    .titlebar {
+      background: var(--win-blue);
+      color: #fff;
+      padding: 6px 10px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .titlebar small {
+      font-weight: normal;
+      opacity: 0.95;
+    }
+
+    .content {
+      padding: 14px;
+    }
+
+    .panel {
+      background: var(--win-white);
+      border-top: 2px solid var(--win-shadow);
+      border-left: 2px solid var(--win-shadow);
+      border-right: 2px solid var(--win-highlight);
+      border-bottom: 2px solid var(--win-highlight);
+      padding: 12px;
+      margin: 12px 0;
+    }
+
+    h1, h2, h3 {
+      margin: 0.2em 0 0.4em;
+      line-height: 1.2;
+    }
+    h1 { font-size: 18px; }
+    h2 { font-size: 16px; }
+    h3 { font-size: 14px; }
+
+    a { color: var(--link); }
+    a:visited { color: var(--link-visited); }
+
+    code, pre {
+      font-family: var(--mono);
+      font-size: 12.5px;
+    }
+
+    pre {
+      margin: 8px 0;
+      padding: 10px;
+      overflow: auto;
+      background: #f7f7f7;
+      border: 1px solid #d0d0d0;
+    }
+
+    .toc ul {
+      margin: 6px 0 0;
+      padding-left: 18px;
+      columns: 2;
+      column-gap: 24px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border: 1px solid #b0b0b0;
+      background: #f3f3f3;
+      font-size: 12px;
+      border-radius: 2px;
+    }
+
+    .note {
+      background: #fffbe6;
+      border: 1px solid #e6d98a;
+      padding: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 13px;
+    }
+
+    th, td {
+      border: 1px solid #c8c8c8;
+      padding: 6px 8px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #efefef;
+      text-align: left;
+    }
+
+    .footer {
+      color: #333;
+      font-size: 12px;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .toc ul { columns: 1; }
+      .window { margin: 0; border: 0; box-shadow: none; }
+      .content { padding: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      Windows 98 Weather <small>Manual • HTML Help</small>
+    </div>
+
+    <div class="content">
+      <div class="panel">
+        <h1 id="top">Reason d'être (why this exists)</h1>
+        <p>
+          <strong>Windows 98 Weather</strong> is a tiny, retro Win98-style weather dashboard.
+          It exists for two reasons:
+        </p>
+        <ul>
+          <li><strong>Readability:</strong> show current conditions and a 16‑day forecast in a simple UI with numbers you can actually scan.</li>
+          <li><strong>Fun + nostalgia:</strong> it looks and feels like classic Windows while still using a modern weather API.</li>
+        </ul>
+        <p class="note">
+          This program is not a scientific instrument. Weather models and derived metrics are approximate.
+          Use the information for planning and curiosity, not safety‑critical decisions.
+        </p>
+      </div>
+
+      <div class="panel toc">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#quickstart">Quick start</a></li>
+          <li><a href="#usage">Using the app</a></li>
+          <li><a href="#settings">Settings.ini reference</a></li>
+          <li><a href="#data">Data sources & privacy</a></li>
+          <li><a href="#units">Units & fields</a></li>
+          <li><a href="#sounds">Sounds</a></li>
+          <li><a href="#troubleshooting">Troubleshooting</a></li>
+          <li><a href="#dev">Developer notes</a></li>
+          <li><a href="#build">Building the EXE</a></li>
+          <li><a href="#appendix">Appendix: weather thermodynamics (math)</a></li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2 id="quickstart">Quick start</h2>
+        <ol>
+          <li>Run <span class="badge">Windows98Weather.exe</span>.</li>
+          <li>Pick a city from the dropdown, or type a city name and press <span class="badge">Enter</span>.</li>
+          <li>Press <span class="badge">Refresh</span> to download current + forecast data.</li>
+          <li>Use the <span class="badge">Units</span> dropdown to switch Metric/Imperial.</li>
+          <li>Use the <span class="badge">Forecast</span> tab to pick a day and see hourly details.</li>
+        </ol>
+      </div>
+
+      <div class="panel">
+        <h2 id="usage">Using the app</h2>
+        <h3>City selection</h3>
+        <ul>
+          <li>Type a city name in the city box and press <strong>Enter</strong>.</li>
+          <li>Or select an existing city from the list.</li>
+          <li>The last selected city is saved so the next launch starts where you left off.</li>
+        </ul>
+
+        <h3>Tabs</h3>
+        <ul>
+          <li><strong>Current</strong>: temperature and other current metrics.</li>
+          <li><strong>Forecast</strong>: day list (left) + summary and hourly details (bottom).</li>
+          <li><strong>Raw JSON</strong>: an internal view of the data the UI is based on (Open‑Meteo mapped into an app-friendly shape).</li>
+        </ul>
+
+        <h3>Help menu</h3>
+        <ul>
+          <li><strong>Help → Help</strong> opens this HTML file when present.</li>
+          <li>If the HTML is missing, the app falls back to CHM help or a built-in text dialog.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2 id="settings">Settings.ini reference</h2>
+        <p>
+          Personalizations live in <span class="badge">Settings.ini</span> next to the EXE.
+          The repo ships <span class="badge">Settings.example.ini</span> as a template.
+        </p>
+
+        <h3>Format</h3>
+        <pre>[Settings]
+UnitSystem=Metric
+LastCity=Berlin
+Language=en
+
+[Cities]
+City=Berlin
+City=New York
+City=Cairo
+</pre>
+
+        <h3>Keys</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Section</th>
+              <th>Key</th>
+              <th>Meaning</th>
+              <th>Examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>[Settings]</td>
+              <td>UnitSystem</td>
+              <td>Unit system used for temperatures and wind speeds.</td>
+              <td><code>Metric</code>, <code>Imperial</code></td>
+            </tr>
+            <tr>
+              <td>[Settings]</td>
+              <td>LastCity</td>
+              <td>The last city you used.</td>
+              <td><code>Tokyo</code></td>
+            </tr>
+            <tr>
+              <td>[Settings]</td>
+              <td>Language</td>
+              <td>Language code used for geocoding results (city names). This does not translate the UI.</td>
+              <td><code>en</code>, <code>fr</code>, <code>de</code>, <code>ar</code></td>
+            </tr>
+            <tr>
+              <td>[Cities]</td>
+              <td>City</td>
+              <td>One city per line. This becomes the dropdown list.</td>
+              <td><code>City=London</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="note">
+          Migration note: if you still have an old <span class="badge">Cities.ini</span>, the app will try to migrate it into <span class="badge">Settings.ini</span> on first run.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h2 id="data">Data sources & privacy</h2>
+        <p>
+          This app uses <strong>Open‑Meteo</strong>:
+        </p>
+        <ul>
+          <li><strong>Geocoding</strong>: city name → latitude/longitude.</li>
+          <li><strong>Forecast</strong>: current + daily + hourly weather values.</li>
+        </ul>
+
+        <h3>What gets sent to the internet?</h3>
+        <ul>
+          <li>Your typed city name is sent to the geocoding endpoint to find coordinates.</li>
+          <li>Coordinates (lat/lon) are then used to fetch forecast data.</li>
+        </ul>
+        <p>
+          The app does not implement user accounts or telemetry. It simply performs HTTP requests to Open‑Meteo.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h2 id="units">Units & fields (what the numbers mean)</h2>
+        <p>
+          Weather data comes in physical quantities that can be shown in different units.
+          The app lets you pick Metric/Imperial for the most noticeable ones.
+        </p>
+
+        <h3>Common concepts</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Quantity</th>
+              <th>Meaning</th>
+              <th>Typical units</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Temperature</td>
+              <td>How hot/cold the air is (thermal state).</td>
+              <td>°C, °F, K</td>
+            </tr>
+            <tr>
+              <td>Wind speed</td>
+              <td>How fast the air is moving.</td>
+              <td>km/h, mph, m/s</td>
+            </tr>
+            <tr>
+              <td>Pressure</td>
+              <td>Force per area from the air column above you.</td>
+              <td>hPa (mb), Pa</td>
+            </tr>
+            <tr>
+              <td>Relative humidity (RH)</td>
+              <td>How close the air is to saturation (100% means saturated).</td>
+              <td>%</td>
+            </tr>
+            <tr>
+              <td>Precipitation</td>
+              <td>Rain/snow water equivalent.</td>
+              <td>mm, inches</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="note">
+          Some “feels like” style numbers (wind chill / heat index) are derived using standard approximations.
+          If a value is not shown by the app, it may still be useful background knowledge.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h2 id="sounds">Sounds</h2>
+        <p>
+          If these files exist in the app folder, they are used:
+        </p>
+        <ul>
+          <li><span class="badge">ding.wav</span>: plays when refresh succeeds (API returns valid data).</li>
+          <li><span class="badge">chord.wav</span>: plays when refresh fails due to network/timeout.</li>
+          <li><span class="badge">Windows_98.wav</span>: optional startup sound.</li>
+        </ul>
+        <p>
+          If they are missing, Windows system sounds are used as a fallback.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h2 id="troubleshooting">Troubleshooting</h2>
+        <h3>“Refresh failed” / no internet</h3>
+        <ul>
+          <li>Check network connectivity.</li>
+          <li>Try a different city spelling (geocoding might not find it).</li>
+          <li>If a firewall blocks PowerShell/EXE internet access, allow it.</li>
+        </ul>
+
+        <h3>City list not updating</h3>
+        <ul>
+          <li>Make sure the city name is not blank, then press <strong>Enter</strong>.</li>
+          <li>Confirm <span class="badge">Settings.ini</span> is writable (not read‑only).</li>
+        </ul>
+
+        <h3>Help file doesn’t open</h3>
+        <ul>
+          <li>Open <span class="badge">Weather98Help.html</span> directly in a browser.</li>
+          <li>If Windows blocks it, click “Unblock” in file properties.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2 id="dev">Developer notes (how it’s built)</h2>
+        <p>
+          The app is written in PowerShell and uses WinForms. The logic is split into modules under <code>src\</code>.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>weather3.ps1</code></td><td>Bootstrap: loads modules, initializes settings/UI, starts the form.</td></tr>
+            <tr><td><code>src\Settings.ps1</code></td><td>Loads/saves Settings.ini and handles migration.</td></tr>
+            <tr><td><code>src\OpenMeteo.ps1</code></td><td>Geocoding + forecast calls and mapping into app data.</td></tr>
+            <tr><td><code>src\UiLayout.ps1</code></td><td>Creates the WinForms UI layout.</td></tr>
+            <tr><td><code>src\UiUpdate.ps1</code></td><td>Renders fetched data into the UI.</td></tr>
+            <tr><td><code>src\UiActions.ps1</code></td><td>Event handlers (refresh, help, about) + glue.</td></tr>
+            <tr><td><code>src\Sounds.ps1</code></td><td>Optional sound playback.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <h2 id="build">Building the EXE</h2>
+        <p>
+          The repo includes a build script that compiles a GUI EXE using PS2EXE and copies runtime assets.
+        </p>
+        <pre>powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Clean</pre>
+        <p>
+          Output goes to <span class="badge">dist\Windows98Weather.exe</span>.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h2 id="appendix">Appendix: weather thermodynamics (math)</h2>
+        <p>
+          Weather is applied physics: fluids + thermodynamics + phase changes of water.
+          Forecast models solve approximate equations on a grid, then providers translate them into the values you see.
+        </p>
+
+        <h3>1) Ideal gas law (air as a gas)</h3>
+        <pre>p = ρ R T
+
+p  = pressure (Pa)
+ρ  = density (kg/m³)
+R  = specific gas constant (dry air: ~287 J/(kg·K))
+T  = temperature (K)</pre>
+
+        <h3>2) Hydrostatic balance (why pressure drops with altitude)</h3>
+        <pre>dp/dz = -ρ g
+
+z = height (m)
+g = 9.81 m/s²</pre>
+        <p>
+          Combine hydrostatic balance with the ideal gas law to derive the approximate exponential pressure profile:
+        </p>
+        <pre>p(z) ≈ p0 · exp(-z / H)
+H ≈ (R T) / g   (scale height)</pre>
+
+        <h3>3) Saturation vapor pressure (water phase change)</h3>
+        <p>
+          Warm air can “hold” more water vapor because the saturation vapor pressure increases rapidly with temperature.
+          A commonly used approximation (Magnus) for saturation vapor pressure over liquid water is:
+        </p>
+        <pre>e_s(T) = 6.112 · exp( a·T / (b + T) )   [hPa]
+
+T in °C, a ≈ 17.62, b ≈ 243.12</pre>
+        <p>
+          This is rooted in the Clausius–Clapeyron relationship (a thermodynamic law describing phase equilibrium).
+        </p>
+
+        <h3>4) Relative humidity (RH)</h3>
+        <pre>RH = 100 · e / e_s(T)
+
+e  = actual vapor pressure
+es = saturation vapor pressure at air temperature</pre>
+
+        <h3>5) Dew point (a useful “comfort” number)</h3>
+        <p>
+          Dew point is the temperature the air would need to cool to (at constant pressure) to reach saturation.
+          Using the Magnus form, dew point can be estimated from temperature and RH:
+        </p>
+        <pre>γ(T, RH) = ln(RH/100) + a·T/(b + T)
+T_d = b·γ / (a - γ)
+
+T and T_d in °C</pre>
+
+        <h3>6) Dry adiabatic lapse rate (why rising air cools)</h3>
+        <pre>Γ_d = g / c_p ≈ 9.8 K/km
+
+c_p (dry air) ≈ 1004 J/(kg·K)</pre>
+        <p>
+          Rising air expands in lower pressure and cools even without exchanging heat with the environment.
+          Moist air cools more slowly because condensation releases latent heat.
+        </p>
+
+        <h3>7) Potential temperature (comparing air parcels at different pressures)</h3>
+        <pre>θ = T · (p0/p)^(R/c_p)
+
+p0 is a reference pressure (often 1000 hPa)</pre>
+
+        <h3>8) Wind chill (cold + wind)</h3>
+        <p>
+          Wind chill approximates how quickly heat is removed from exposed skin.
+          One common formula (used in many public forecasts) is:
+        </p>
+        <pre>T_wc = 13.12 + 0.6215·T - 11.37·v^0.16 + 0.3965·T·v^0.16
+
+T in °C, v in km/h</pre>
+
+        <h3>9) Heat index (hot + humid)</h3>
+        <p>
+          Heat index approximates perceived heat stress from temperature and humidity.
+          A commonly cited regression (Rothfusz) is used operationally in some regions.
+          It is valid only within certain ranges (hot temps, moderate/high humidity).
+        </p>
+        <pre>HI ≈ f(T, RH)
+
+(There are multiple region-specific definitions; treat this as educational.)</pre>
+
+        <p class="note">
+          Why so many formulas? “Weather” is a mix of direct model outputs and derived indices.
+          Even when the UI shows a simple number, it often comes from a chain of physical assumptions.
+        </p>
+      </div>
+
+      <div class="footer">
+        <p>
+          Manual file: <strong>Weather98Help.html</strong> •
+          <a href="#top">Back to top</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

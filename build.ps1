@@ -196,6 +196,7 @@ $assets = @(
     'chord.wav',
     'Windows_98.wav',
     'Weather98Help.chm',
+    'Weather98Help.html',
     'Settings.ini',
     'Settings.example.ini',
     'Cities.ini',

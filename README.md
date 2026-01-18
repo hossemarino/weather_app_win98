@@ -31,6 +31,11 @@ Output:
 
 - `dist\Windows98Weather.exe`
 
+## Documentation
+
+- In the built folder, open `dist\Weather98Help.html`.
+- In the app UI, use Help → Help.
+
 Notes:
 
 - `.exe` files and `dist\` are ignored by git (see `.gitignore`).

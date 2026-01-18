@@ -135,6 +135,21 @@ function Register-WeatherUiHandlers {
 
     $miHelp.Add_Click({
         try {
+            $html1 = Join-Path $script:AppBase 'Weather98Help.html'
+            $html2 = Join-Path $script:AppBase 'Windows98Weather.html'
+            $html = $null
+            if (Test-Path -LiteralPath $html1) {
+                $html = $html1
+            }
+            elseif (Test-Path -LiteralPath $html2) {
+                $html = $html2
+            }
+
+            if ($html) {
+                Start-Process -FilePath $html | Out-Null
+                return
+            }
+
             $chm1 = Join-Path $script:AppBase 'Weather98Help.chm'
             $chm2 = Join-Path $script:AppBase 'Windows98Weather.chm'
             $chm = $null
