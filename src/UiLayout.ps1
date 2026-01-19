@@ -110,7 +110,10 @@ function Initialize-WeatherUi {
         else {
             $sysIcon = $null
             try {
+                $lib = $null
+                $ix = 83
                 if ($script:IconDll) {
+                    $lib = [string]$script:IconDll
                     $ix = 0
                     try {
                         if ($null -ne $script:IconIndex) { $ix = [int]$script:IconIndex }
@@ -118,7 +121,14 @@ function Initialize-WeatherUi {
                     catch {
                         $ix = 0
                     }
-                    $sysIcon = Get-IconFromLibrary -LibraryPath $script:IconDll -Index $ix
+                }
+                else {
+                    # Sensible retro default: use a system icon from netshell.dll.
+                    $lib = '%SystemRoot%\System32\netshell.dll'
+                }
+
+                if ($lib) {
+                    $sysIcon = Get-IconFromLibrary -LibraryPath $lib -Index $ix
                 }
             }
             catch {

@@ -5,6 +5,10 @@ param(
     # Output exe name
     [string]$ExeName = 'Windows98Weather.exe',
 
+    # Optional: .ico file to embed into the EXE (Explorer icon + pinned taskbar shortcut icon).
+    # If provided, it is also copied into dist as weather.ico so the runtime window icon matches.
+    [string]$IconFile = '',
+
     # Hide console window (recommended for WinForms)
     [switch]$NoConsole = $true,
 
@@ -18,7 +22,10 @@ param(
     [switch]$Clean,
 
     # Skip installing PS2EXE automatically
-    [switch]$SkipModuleInstall
+    [switch]$SkipModuleInstall,
+
+    # If set, copy your local Settings.ini into dist (personal). By default dist gets Settings.ini from Settings.example.ini.
+    [switch]$IncludeUserSettings
 )
 
 Set-StrictMode -Version Latest
@@ -82,9 +89,119 @@ if (-not $invoke) {
 }
 
 $outExe = Join-Path $OutDir $ExeName
-$iconPath = Join-Path $root 'weather.ico'
-if (-not (Test-Path -LiteralPath $iconPath)) {
-    $iconPath = $null
+
+function New-IcoFromPng {
+    param(
+        [Parameter(Mandatory)]
+        [byte[]]$PngBytes,
+        [Parameter(Mandatory)]
+        [string]$OutPath
+    )
+
+    if ($PngBytes.Length -lt 32) {
+        throw 'PNG data too small.'
+    }
+
+    # PNG signature: 89 50 4E 47 0D 0A 1A 0A
+    $sig = @(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+    for ($i = 0; $i -lt $sig.Count; $i++) {
+        if ($PngBytes[$i] -ne $sig[$i]) {
+            throw 'Input is not a PNG.'
+        }
+    }
+
+    # IHDR starts at offset 12, data at 16: width/height are big-endian
+    $w = ($PngBytes[16] -shl 24) -bor ($PngBytes[17] -shl 16) -bor ($PngBytes[18] -shl 8) -bor $PngBytes[19]
+    $h = ($PngBytes[20] -shl 24) -bor ($PngBytes[21] -shl 16) -bor ($PngBytes[22] -shl 8) -bor $PngBytes[23]
+    if ($w -lt 1 -or $h -lt 1) {
+        throw "Invalid PNG dimensions: ${w}x${h}"
+    }
+
+    $entryWidth = if ($w -ge 256) { 0 } else { [byte]$w }
+    $entryHeight = if ($h -ge 256) { 0 } else { [byte]$h }
+
+    $header = New-Object byte[] 6
+    # reserved 0
+    $header[0] = 0; $header[1] = 0
+    # type = 1 (icon)
+    $header[2] = 1; $header[3] = 0
+    # count = 1
+    $header[4] = 1; $header[5] = 0
+
+    $dir = New-Object byte[] 16
+    $dir[0] = $entryWidth
+    $dir[1] = $entryHeight
+    $dir[2] = 0
+    $dir[3] = 0
+    # planes (LE)
+    $dir[4] = 1; $dir[5] = 0
+    # bitcount (LE) - 32bpp is typical
+    $dir[6] = 32; $dir[7] = 0
+    # bytes in resource (LE)
+    $len = [int]$PngBytes.Length
+    $dir[8] = [byte]($len -band 0xFF)
+    $dir[9] = [byte](($len -shr 8) -band 0xFF)
+    $dir[10] = [byte](($len -shr 16) -band 0xFF)
+    $dir[11] = [byte](($len -shr 24) -band 0xFF)
+    # offset (LE)
+    $off = 6 + 16
+    $dir[12] = [byte]($off -band 0xFF)
+    $dir[13] = [byte](($off -shr 8) -band 0xFF)
+    $dir[14] = [byte](($off -shr 16) -band 0xFF)
+    $dir[15] = [byte](($off -shr 24) -band 0xFF)
+
+    $ico = New-Object byte[] ($off + $len)
+    [Array]::Copy($header, 0, $ico, 0, 6)
+    [Array]::Copy($dir, 0, $ico, 6, 16)
+    [Array]::Copy($PngBytes, 0, $ico, $off, $len)
+
+    [System.IO.File]::WriteAllBytes($OutPath, $ico)
+    return $OutPath
+}
+
+function Resolve-IconFileForBuild {
+    param(
+        [string]$CandidatePath,
+        [Parameter(Mandatory)]
+        [string]$OutDirectory
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CandidatePath)) {
+        return $null
+    }
+
+    if (-not (Test-Path -LiteralPath $CandidatePath)) {
+        throw "Icon file not found: $CandidatePath"
+    }
+
+    $bytes = [System.IO.File]::ReadAllBytes($CandidatePath)
+    if ($bytes.Length -ge 8 -and $bytes[0] -eq 0x89 -and $bytes[1] -eq 0x50 -and $bytes[2] -eq 0x4E -and $bytes[3] -eq 0x47) {
+        $outIco = Join-Path $OutDirectory '_icon_for_build.ico'
+        Write-Host "NOTE: '$CandidatePath' is a PNG; wrapping into ICO for embedding..." -ForegroundColor Yellow
+        return (New-IcoFromPng -PngBytes $bytes -OutPath $outIco)
+    }
+
+    # ICO signature is 00 00 01 00
+    if ($bytes.Length -ge 4 -and $bytes[0] -eq 0 -and $bytes[1] -eq 0 -and $bytes[2] -eq 1 -and $bytes[3] -eq 0) {
+        return $CandidatePath
+    }
+
+    throw "Unsupported icon format (expected .ico or PNG): $CandidatePath"
+}
+
+$iconPath = $null
+if (-not [string]::IsNullOrWhiteSpace($IconFile)) {
+    $cand = $IconFile
+    if (-not [System.IO.Path]::IsPathRooted($cand)) {
+        $cand = Join-Path $root $cand
+    }
+    $iconPath = Resolve-IconFileForBuild -CandidatePath $cand -OutDirectory $OutDir
+}
+else {
+    $cand = Join-Path $root 'weather.ico'
+    if (Test-Path -LiteralPath $cand) {
+        $iconPath = Resolve-IconFileForBuild -CandidatePath $cand -OutDirectory $OutDir
+    }
 }
 
 function New-BundledBuildScript {
@@ -195,9 +312,7 @@ $assets = @(
     'ding.wav',
     'chord.wav',
     'Windows_98.wav',
-    'Weather98Help.chm',
     'Weather98Help.html',
-    'Settings.ini',
     'Settings.example.ini',
     'Cities.ini',
     'README.md',
@@ -211,15 +326,27 @@ foreach ($name in $assets) {
     }
 }
 
-# If Settings.ini isn't present in the repo (it is user-specific / git-ignored),
-# still ship a default Settings.ini in dist based on Settings.example.ini.
+# Always ship the same validated icon as dist\weather.ico so the runtime window/taskbar icon matches the EXE icon.
+try {
+    if ($iconPath) {
+        Copy-Item -LiteralPath $iconPath -Destination (Join-Path $OutDir 'weather.ico') -Force
+    }
+}
+catch {
+    # no-op
+}
+
+# Settings.ini is user-specific. For distributable builds, prefer Settings.example.ini.
 try {
     $distSettings = Join-Path $OutDir 'Settings.ini'
-    if (-not (Test-Path -LiteralPath $distSettings)) {
-        $example = Join-Path $root 'Settings.example.ini'
-        if (Test-Path -LiteralPath $example) {
-            Copy-Item -LiteralPath $example -Destination $distSettings -Force
-        }
+    $example = Join-Path $root 'Settings.example.ini'
+    $userSettings = Join-Path $root 'Settings.ini'
+
+    if ($IncludeUserSettings -and (Test-Path -LiteralPath $userSettings)) {
+        Copy-Item -LiteralPath $userSettings -Destination $distSettings -Force
+    }
+    elseif (Test-Path -LiteralPath $example) {
+        Copy-Item -LiteralPath $example -Destination $distSettings -Force
     }
 }
 catch {

@@ -27,6 +27,14 @@ From the repo folder:
 
 - `powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Clean`
 
+To embed a custom Explorer/EXE icon (also used by pinned taskbar shortcuts), pass an .ico file:
+
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Clean -IconFile .\myicon.ico`
+
+Tip (local-only): you can export an .ico from a system DLL to experiment with indices:
+
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Export-DllIcons.ps1 -DllPath "%SystemRoot%\System32\netshell.dll" -MaxIcons 200 -Png:$false`
+
 Output:
 
 - `dist\Windows98Weather.exe`
