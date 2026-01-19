@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory)]
     [string]$DllPath,
 
-    [string]$OutDir = (Join-Path $PSScriptRoot 'icons'),
+    [string]$OutDir = '',
 
     [int]$MaxIcons = 200,
 
@@ -13,6 +13,42 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 Add-Type -AssemblyName System.Drawing | Out-Null
+
+function Get-ThisScriptDirectory {
+    try {
+        if ($PSScriptRoot) { return $PSScriptRoot }
+    }
+    catch {}
+
+    try {
+        if ($PSCommandPath) { return (Split-Path -Parent $PSCommandPath) }
+    }
+    catch {}
+
+    try {
+        if ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Path) {
+            return (Split-Path -Parent $MyInvocation.MyCommand.Path)
+        }
+    }
+    catch {}
+
+    # Common dev case: running from repo root
+    try {
+        $cwd = (Get-Location).Path
+        $cand = Join-Path $cwd 'tools'
+        if (Test-Path -LiteralPath $cand) { return $cand }
+        return $cwd
+    }
+    catch {
+        return $null
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($OutDir)) {
+    $base = Get-ThisScriptDirectory
+    if (-not $base) { $base = (Get-Location).Path }
+    $OutDir = Join-Path $base 'icons'
+}
 
 $typeDef = @'
 using System;
