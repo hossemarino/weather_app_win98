@@ -42,6 +42,8 @@ function Get-SettingsFromIni {
         UnitSystem = 'Metric'
         LastCity   = ''
         Language   = 'en'
+        IconDll    = ''
+        IconIndex  = $null
         Cities     = @()
     }
 
@@ -85,6 +87,19 @@ function Get-SettingsFromIni {
                     $lang = ([string]$v).Trim().ToLowerInvariant()
                     if (-not [string]::IsNullOrWhiteSpace($lang)) { $result.Language = $lang }
                 }
+                elseif ($k -ieq 'IconDll') {
+                    $result.IconDll = $v
+                }
+                elseif ($k -ieq 'IconIndex') {
+                    try {
+                        if (-not [string]::IsNullOrWhiteSpace($v)) {
+                            $result.IconIndex = [int]$v
+                        }
+                    }
+                    catch {
+                        # ignore invalid
+                    }
+                }
             }
             continue
         }
@@ -122,6 +137,11 @@ function Save-SettingsIni {
 
         [string]$Language = 'en',
 
+        [string]$IconDll = '',
+
+        [AllowNull()]
+        [Nullable[int]]$IconIndex = $null,
+
         [string[]]$Cities,
 
         [string]$Path = $script:SettingsIniPath
@@ -148,6 +168,16 @@ function Save-SettingsIni {
     catch { $langValue = 'en' }
     if ([string]::IsNullOrWhiteSpace($langValue) -or $langValue -eq '--') { $langValue = 'en' }
     $content.Add('Language=' + $langValue)
+
+    $iconDllValue = ''
+    try { if ($null -ne $IconDll) { $iconDllValue = ([string]$IconDll).Trim() } } catch { $iconDllValue = '' }
+    if (-not [string]::IsNullOrWhiteSpace($iconDllValue)) {
+        $content.Add('IconDll=' + $iconDllValue)
+        if ($null -ne $IconIndex) {
+            $content.Add('IconIndex=' + ([string]$IconIndex))
+        }
+    }
+
     $content.Add('')
     $content.Add('[Cities]')
     foreach ($c in $citiesSorted) {
@@ -193,6 +223,8 @@ function Initialize-AppSettings {
     $script:UnitSystem = $s.UnitSystem
     $script:LastCity = $s.LastCity
     $script:Language = $s.Language
+    $script:IconDll = $s.IconDll
+    $script:IconIndex = $s.IconIndex
     $script:StartupCities = @($s.Cities)
 }
 
@@ -223,7 +255,7 @@ function Update-Personalizations {
     $script:StartupCities = $sorted
 
     try {
-        Save-SettingsIni -UnitSystem $script:UnitSystem -LastCity $script:LastCity -Language $script:Language -Cities $sorted
+        Save-SettingsIni -UnitSystem $script:UnitSystem -LastCity $script:LastCity -Language $script:Language -IconDll $script:IconDll -IconIndex $script:IconIndex -Cities $sorted
     }
     catch {
         # no-op

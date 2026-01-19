@@ -58,6 +58,8 @@ $ErrorActionPreference = 'Stop'
     $script:UnitSystem = 'Metric' # Metric | Imperial
     $script:LastCity = ''
     $script:Language = 'en'
+    $script:IconDll = ''
+    $script:IconIndex = $null
     $script:StartupCities = @()
     Initialize-AppSettings
 

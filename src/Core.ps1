@@ -100,3 +100,111 @@ function Format-PrettyJson {
         ''
     }
 }
+
+function Initialize-NativeIconInterop {
+    try {
+        if ('NativeIcon' -as [type]) { return }
+    }
+    catch {
+        # no-op
+    }
+
+    $typeDef = @'
+using System;
+using System.Runtime.InteropServices;
+
+public static class NativeIcon
+{
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern uint ExtractIconEx(
+        string lpszFile,
+        int nIconIndex,
+        IntPtr[] phiconLarge,
+        IntPtr[] phiconSmall,
+        uint nIcons);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool DestroyIcon(IntPtr hIcon);
+}
+'@
+
+    try {
+        Add-Type -TypeDefinition $typeDef -Language CSharp -ErrorAction Stop | Out-Null
+    }
+    catch {
+        # If the type already exists or Add-Type fails, just ignore.
+    }
+}
+
+function Resolve-SystemLibraryPath {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    $p = [Environment]::ExpandEnvironmentVariables(([string]$Path).Trim())
+    if ([string]::IsNullOrWhiteSpace($p)) { return $null }
+    if (Test-Path -LiteralPath $p) { return $p }
+
+    # If user provided just a filename, try System32.
+    try {
+        $leaf = Split-Path -Path $p -Leaf
+        if ($leaf -and $leaf -eq $p) {
+            $sys32 = Join-Path $env:WINDIR 'System32'
+            $cand = Join-Path $sys32 $leaf
+            if (Test-Path -LiteralPath $cand) { return $cand }
+        }
+    }
+    catch {
+        # no-op
+    }
+
+    return $p
+}
+
+function Get-IconFromLibrary {
+    param(
+        [Parameter(Mandatory)]
+        [string]$LibraryPath,
+
+        [int]$Index = 0
+    )
+
+    try {
+        Initialize-NativeIconInterop
+        if (-not ('NativeIcon' -as [type])) { return $null }
+
+        $resolved = Resolve-SystemLibraryPath -Path $LibraryPath
+        if (-not $resolved) { return $null }
+        if (-not (Test-Path -LiteralPath $resolved)) { return $null }
+
+        $large = New-Object IntPtr[] 1
+        $small = New-Object IntPtr[] 1
+        $count = [NativeIcon]::ExtractIconEx($resolved, $Index, $large, $small, 1)
+        if ($count -lt 1) { return $null }
+
+        $h = [IntPtr]::Zero
+        if ($large[0] -ne [IntPtr]::Zero) {
+            $h = $large[0]
+        }
+        elseif ($small[0] -ne [IntPtr]::Zero) {
+            $h = $small[0]
+        }
+
+        if ($h -eq [IntPtr]::Zero) { return $null }
+
+        $icon = [System.Drawing.Icon]::FromHandle($h)
+        $clone = $null
+        try {
+            $clone = [System.Drawing.Icon]$icon.Clone()
+        }
+        finally {
+            try { [void][NativeIcon]::DestroyIcon($h) } catch {}
+        }
+
+        return $clone
+    }
+    catch {
+        return $null
+    }
+}

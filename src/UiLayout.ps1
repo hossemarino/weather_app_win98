@@ -108,7 +108,29 @@ function Initialize-WeatherUi {
             $form.Icon = New-Object System.Drawing.Icon($ico)
         }
         else {
-            $form.Icon = [System.Drawing.SystemIcons]::Application
+            $sysIcon = $null
+            try {
+                if ($script:IconDll) {
+                    $ix = 0
+                    try {
+                        if ($null -ne $script:IconIndex) { $ix = [int]$script:IconIndex }
+                    }
+                    catch {
+                        $ix = 0
+                    }
+                    $sysIcon = Get-IconFromLibrary -LibraryPath $script:IconDll -Index $ix
+                }
+            }
+            catch {
+                $sysIcon = $null
+            }
+
+            if ($sysIcon) {
+                $form.Icon = $sysIcon
+            }
+            else {
+                $form.Icon = [System.Drawing.SystemIcons]::Application
+            }
         }
     }
     catch {
